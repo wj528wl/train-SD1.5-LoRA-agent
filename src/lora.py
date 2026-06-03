@@ -87,7 +87,7 @@ def load_lora_weights(lora_path):
     if lora_path.endswith(".safetensors"):
         return load_file(lora_path)
 
-    loaded = torch.load(lora_path, map_location="cpu")
+    loaded = torch.load(lora_path, map_location="cpu", weights_only=True)
     return loaded.get("state_dict", loaded)
 
 
@@ -142,7 +142,18 @@ def _get_target_model(unet_or_wrapper):
 def _get_submodule(root_module, module_name):
     module = root_module
     for part in module_name.split("."):
-        module = getattr(module, part)
+        if module is None:
+            raise AttributeError(f"遍历模块路径 '{module_name}' 时在 '{part}' 之前遇到 None（上一级模块不存在）")
+        if part.isdigit():
+            try:
+                module = module[int(part)]
+            except (IndexError, TypeError) as e:
+                raise AttributeError(f"无法索引模块 '{module_name}' 中的 [{part}]: {e}")
+        else:
+            try:
+                module = getattr(module, part)
+            except AttributeError:
+                raise AttributeError(f"模块路径 '{module_name}' 中不存在 '{part}'（当前模块类型: {type(module).__name__}）")
     return module
 
 
@@ -150,8 +161,15 @@ def _set_submodule(root_module, module_name, new_module):
     parts = module_name.split(".")
     parent = root_module
     for part in parts[:-1]:
-        parent = getattr(parent, part)
-    setattr(parent, parts[-1], new_module)
+        if part.isdigit():
+            parent = parent[int(part)]
+        else:
+            parent = getattr(parent, part)
+    last = parts[-1]
+    if last.isdigit():
+        parent[int(last)] = new_module
+    else:
+        setattr(parent, last, new_module)
 
 
 def _ensure_injected_linear(root_module, module_name):

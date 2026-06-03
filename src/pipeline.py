@@ -1,9 +1,10 @@
+import os
 import numpy as np
 import torch
 from PIL import Image
+from diffusers import DDIMScheduler
 
 from .clip import CLIPTextEncoder
-from .ddim_scheduler import DDIMScheduler
 from .unet import UNet
 from .vae import VAE
 
@@ -40,7 +41,15 @@ class StableDiffusionPipeline:
         self.vae = VAE(device=device, dtype=self.dtype, model_path=model_path)
 
         self._log("Loading scheduler...")
-        self.scheduler = DDIMScheduler(model_path=model_path)
+        # 优先从本地加载官方 DDIM，本地没有则从 HuggingFace 下载
+        if model_path and os.path.isdir(os.path.join(model_path, "scheduler")):
+            self.scheduler = DDIMScheduler.from_pretrained(
+                model_path, subfolder="scheduler"
+            )
+        else:
+            self.scheduler = DDIMScheduler.from_pretrained(
+                "runwayml/stable-diffusion-v1-5", subfolder="scheduler"
+            )
 
         if lora_path:
             self._log(f"Loading LoRA from {lora_path}...")
@@ -114,7 +123,9 @@ class StableDiffusionPipeline:
             else:
                 noise_pred = self.unet.forward(latent_model_input, timestep, positive_embeds)
 
-            latents = self.scheduler.step(noise_pred, timestep, latents)
+            step_out = self.scheduler.step(noise_pred, timestep, latents)
+            # diffusers 0.17+ 返回 DDIMSchedulerOutput，兼容 tuple
+            latents = step_out.prev_sample if hasattr(step_out, "prev_sample") else step_out[0]
 
             if self.verbose and (step_index == num_inference_steps or step_index % 10 == 0):
                 print(f"  step {step_index}/{num_inference_steps}")

@@ -16,9 +16,9 @@ else:
 DEFAULTS = {
     "prompt": "leisai, purple hair, green eyes, smile, anime girl, best quality",
     "negative_prompt": "low quality, blurry, bad anatomy, worst quality",
-    "model_path": "./models/stable-diffusion-v1-5",
-    "use_lora": True,
-    "lora_path": "./outputs/lora_full/final_lora.safetensors",
+    "model_path": "./models/anything-v5",
+    "use_lora": False,
+    "lora_path": None,
     "lora_strength": 1.0,
     "height": 512,
     "width": 512,

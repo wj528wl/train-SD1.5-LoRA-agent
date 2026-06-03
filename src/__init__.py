@@ -5,7 +5,6 @@ _EXPORTS = {
     "CLIPTextEncoder": ".clip",
     "UNet": ".unet",
     "VAE": ".vae",
-    "DDIMScheduler": ".ddim_scheduler",
     "StableDiffusionPipeline": ".pipeline",
 }
 
